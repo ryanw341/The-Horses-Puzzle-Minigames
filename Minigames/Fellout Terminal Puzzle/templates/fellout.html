@@ -1,0 +1,56 @@
+<style>
+  :root {
+    --terminal-color: #ff1717;
+    --border-color: var(--terminal-color);
+    --addr-color: #ff8d8d;
+  }
+  .horse-term {
+    background: #0b120c;
+    color: var(--terminal-color);
+    font-family: "VT323", "IBM Plex Mono", "Cascadia Mono", monospace;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 0 16px rgba(255, 23, 23, 0.35);
+  }
+  .horse-term h1 { margin: 0 0 8px 0; font-size: 20px; letter-spacing: 0.08em; }
+  .horse-term .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .horse-term button { background: transparent; color: var(--terminal-color); border: 1px solid var(--border-color); padding: 4px 10px; cursor: pointer; }
+  .horse-term button:hover { background: rgba(255,23,23,0.15); }
+  .horse-term .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .horse-term .panel { border: 1px solid var(--border-color); padding: 8px; min-height: 420px; }
+  .horse-term .log { white-space: pre-wrap; min-height: 100%; }
+  .horse-term .monospace { font-family: inherit; letter-spacing: 0.06em; }
+  .horse-term .terminal { display: flex; gap: 8px; position: relative; }
+  .horse-term .terminal .col { flex: 1; }
+  .horse-term .line { display: flex; gap: 8px; }
+  .horse-term .addr { color: var(--addr-color); min-width: 72px; }
+  .horse-term .data { white-space: pre; }
+  .horse-term .word { cursor: pointer; }
+  .horse-term .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.72); font-size: 24px; }
+  .horse-term .animate-glitch { animation: glitch 0.3s steps(2) 3; }
+  .horse-term .animate-flash { animation: flash 0.2s steps(2) 4; }
+  .horse-term .animate-success { animation: success 0.8s ease-in-out 1; }
+  @keyframes glitch { 0% { transform: translate(1px, -1px);} 25% { transform: translate(-2px, 2px);} 50% { transform: translate(2px, -2px);} 75% { transform: translate(-1px, 1px);} 100% { transform: translate(0,0);} }
+  @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+  @keyframes success { 0% { box-shadow: 0 0 0 rgba(0,255,0,0.1);} 50% { box-shadow: 0 0 20px rgba(0,255,0,0.45);} 100% { box-shadow: 0 0 0 rgba(0,255,0,0.1);} }
+</style>
+<div class="horse-term">
+  <h1>HORSECO INDUSTRIES (TM) TERMLINK</h1>
+  <div class="controls">
+    <button data-action="start">Start</button>
+    <button data-action="reset">Reset Puzzle</button>
+    <span data-field="attempts" class="monospace"></span>
+    <span data-field="timer" class="monospace"></span>
+  </div>
+  <div class="grid">
+    <div class="panel" id="horse-left">
+      <div class="terminal">
+        <div class="col" data-col="A"></div>
+        <div class="col" data-col="B"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="log" data-field="log"></div>
+    </div>
+  </div>
+</div>
