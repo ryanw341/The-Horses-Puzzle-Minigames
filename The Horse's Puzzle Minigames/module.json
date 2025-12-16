@@ -1,0 +1,19 @@
+{
+  "id": "The-Horses-Puzzles",
+  "title": "The Horse's Puzzle Minigames",
+  "description": "Core module providing a registry and HUD integrations to enable puzzle minigames per door/actor.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [{ "name": "Ryan" }],
+  "esmodules": [
+    "scripts/core.js"
+  ],
+  "languages": [],
+  "packs": [],
+  "url": "",
+  "manifest": "",
+  "download": ""
+}

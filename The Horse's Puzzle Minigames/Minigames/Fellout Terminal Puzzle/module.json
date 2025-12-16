@@ -1,0 +1,25 @@
+{
+  "id": "the-horses-hacking-puzzle",
+  "title": "The Horse's Fellout Hacking Puzzle",
+  "description": "A Fellout-style hacking puzzle for Foundry doors, with unlock-on-success hooks.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "The Horse",
+      "url": "",
+      "email": ""
+    }
+  ],
+  "esmodules": [],
+  "scripts": ["scripts/puzzle.js"],
+  "styles": [],
+  "languages": [],
+  "packs": [],
+  "manifest": "",
+  "download": "",
+  "license": "MIT"
+}
