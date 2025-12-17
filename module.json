@@ -2,7 +2,7 @@
   "id": "The-Horses-Puzzles",
   "title": "The Horse's Puzzle Minigames",
   "description": "Core module providing a registry and HUD integrations to enable puzzle minigames per door/actor.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
