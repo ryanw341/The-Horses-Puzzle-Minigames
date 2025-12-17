@@ -29,21 +29,42 @@ class PuzzleRegistry {
 const registry = new PuzzleRegistry();
 
 const BUILT_IN_PUZZLES = [
-  { id: "fellout", title: "Fellout Terminal Puzzle", path: "Minigames/Fellout Terminal Puzzle/index.html" },
-  { id: "wire", title: "Wiring Puzzle", path: "Minigames/Wire Puzzle/WireGenEasy.html" },
+  { id: "fellout", title: "Fellout Terminal Puzzle", segments: ["Minigames", "Fellout Terminal Puzzle", "index.html"] },
+  { id: "wire", title: "Wiring Puzzle", segments: ["Minigames", "Wire Puzzle", "WireGenEasy.html"] },
 ];
 
-function openIframePuzzle({ id, title, path, context }) {
-  const src = encodeURI(`modules/${MODULE_ID}/${path}`);
+function openIframePuzzle({ id, title, context }) {
+  const puzzle = BUILT_IN_PUZZLES.find((p) => p.id === id);
+  const expectedOrigin = window.location?.origin;
+  if (!puzzle || !expectedOrigin) return Promise.resolve(false);
+  const segments = puzzle.segments ?? [];
+  if (!segments.length) return Promise.resolve(false);
+  const encodedPath = segments.map((part) => encodeURIComponent(part)).join("/");
+  const token = (crypto?.randomUUID?.() ?? (() => {
+    if (crypto?.getRandomValues) {
+      const bytes = new Uint32Array(4);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes).map((b) => b.toString(16)).join("-");
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  })());
+  const srcUrl = new URL(`modules/${MODULE_ID}/${encodedPath}`, expectedOrigin);
+  srcUrl.searchParams.set("parentOrigin", expectedOrigin);
+  srcUrl.searchParams.set("token", token);
+  const src = srcUrl.toString();
   return new Promise((resolve) => {
     let done = false;
+    let iframe = null;
     const listener = async (ev) => {
+      if (iframe && ev?.source !== iframe.contentWindow) return;
+      if (ev?.origin !== expectedOrigin) return;
+      if (ev?.data?.token !== token) return;
       if (ev?.data?.module !== MODULE_ID || ev?.data?.puzzle !== id || ev?.data?.action !== "solved") return;
       done = true;
       window.removeEventListener("message", listener);
       try {
         if (context?.kind === "door" && context?.wall) {
-          await context.wall.document.update({ ds: CONST.WALL_DOOR_STATES.CLOSED });
+          await context.wall.document.update({ ds: CONST.WALL_DOOR_STATES.OPEN });
           ui.notifications?.info("Door unlocked.");
         } else if (context?.kind === "actor" && context?.token) {
           ui.notifications?.info("Access granted.");
@@ -53,10 +74,9 @@ function openIframePuzzle({ id, title, path, context }) {
       }
       resolve(true);
     };
-    window.addEventListener("message", listener);
     const dialog = new Dialog({
       title,
-      content: `<iframe src="${src}" style="width:100%; height:600px; border:none;"></iframe>`,
+      content: `<iframe src="${src}" style="width:100%; height:600px; border:none;" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`,
       buttons: {},
       close: () => {
         window.removeEventListener("message", listener);
@@ -64,6 +84,8 @@ function openIframePuzzle({ id, title, path, context }) {
       }
     });
     dialog.render(true);
+    iframe = dialog.element?.find?.("iframe")?.get?.(0) ?? null;
+    window.addEventListener("message", listener);
   });
 }
 
@@ -74,7 +96,7 @@ function registerSettings() {
     scope: "world",
     config: true,
     type: Array,
-    default: ["fellout", "wire"],
+    default: BUILT_IN_PUZZLES.map((p) => p.id),
   });
   game.settings.register(MODULE_ID, "defaultDoorPuzzle", {
     name: "Default Door Puzzle",
@@ -154,7 +176,7 @@ Hooks.once("ready", () => {
     registerPuzzle({
       id: pkg.id,
       title: pkg.title,
-      open: (context) => openIframePuzzle({ ...pkg, context })
+      open: (context) => openIframePuzzle({ id: pkg.id, title: pkg.title, context })
     });
   }
 
@@ -170,22 +192,6 @@ Hooks.once("ready", () => {
 
   // Add actor HUD button
   Hooks.on("renderTokenHUD", addActorHudButton);
-
-  // Listen for iframe-based puzzle completion
-  window.addEventListener("message", (ev) => {
-    const data = ev?.data;
-    if (!data || data?.module !== MODULE_ID) return;
-    if (data?.action === "solved") {
-      const ctx = data?.context;
-      if (ctx?.kind === "door" && ctx?.wall) {
-        ctx.wall.document.update({ ds: CONST.WALL_DOOR_STATES.CLOSED });
-        ui.notifications?.info("Door unlocked.");
-      }
-      if (ctx?.kind === "actor" && ctx?.token) {
-        ui.notifications?.info("Access granted.");
-      }
-    }
-  });
 });
 
 // Export a small API to allow puzzles to register themselves when imported
