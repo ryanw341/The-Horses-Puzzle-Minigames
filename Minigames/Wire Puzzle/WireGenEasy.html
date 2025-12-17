@@ -746,6 +746,13 @@
 
             if (correct) {
                 showModal('Success! ⚡', 'Access granted! The Machine Spirit is pleased.');
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const targetOrigin = params.get("parentOrigin");
+                    const token = params.get("token");
+                    if (!targetOrigin || !token || !window.parent || window === window.top) return;
+                    window.parent.postMessage({ module: "The-Horses-Puzzles", puzzle: "wire", action: "solved", token }, targetOrigin);
+                } catch (e) { console.warn('Puzzle postMessage failed', e); }
             } else {
                 showModal('Incorrect ❌', 'The wiring is incorrect. The Machine Spirit rejects your configuration.');
             }
