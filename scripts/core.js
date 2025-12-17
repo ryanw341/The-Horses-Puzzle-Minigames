@@ -111,7 +111,7 @@ Hooks.once("init", () => {
 Hooks.once("ready", () => {
   applyEnabledFromSettings();
   // Try to auto-register default packages located under Minigames/<id>/index.js
-  const defaults = ["fellout", "wire"]; // extend as you add more
+  const defaults = ["fellout"]; // extend as you add more
   for (const id of defaults) {
     const path = `../Minigames/${id}/index.js`;
     import(path).then(mod => {
