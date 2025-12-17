@@ -1,4 +1,4 @@
-import { registerPuzzle } from "modules/The-Horses-Puzzles/scripts/core.js";
+import { registerPuzzle } from "../../scripts/core.js";
 
 // Fellout Terminal puzzle package entry
 // Expects template at modules/The-Horses-Puzzles/Minigames/fellout/templates/fellout.html
