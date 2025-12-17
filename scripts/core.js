@@ -28,6 +28,45 @@ class PuzzleRegistry {
 
 const registry = new PuzzleRegistry();
 
+const BUILT_IN_PUZZLES = [
+  { id: "fellout", title: "Fellout Terminal Puzzle", path: "Minigames/Fellout Terminal Puzzle/index.html" },
+  { id: "wire", title: "Wiring Puzzle", path: "Minigames/Wire Puzzle/WireGenEasy.html" },
+];
+
+function openIframePuzzle({ id, title, path, context }) {
+  const src = encodeURI(`modules/${MODULE_ID}/${path}`);
+  return new Promise((resolve) => {
+    let done = false;
+    const listener = async (ev) => {
+      if (ev?.data?.module !== MODULE_ID || ev?.data?.puzzle !== id || ev?.data?.action !== "solved") return;
+      done = true;
+      window.removeEventListener("message", listener);
+      try {
+        if (context?.kind === "door" && context?.wall) {
+          await context.wall.document.update({ ds: CONST.WALL_DOOR_STATES.CLOSED });
+          ui.notifications?.info("Door unlocked.");
+        } else if (context?.kind === "actor" && context?.token) {
+          ui.notifications?.info("Access granted.");
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} puzzle completion`, err);
+      }
+      resolve(true);
+    };
+    window.addEventListener("message", listener);
+    const dialog = new Dialog({
+      title,
+      content: `<iframe src="${src}" style="width:100%; height:600px; border:none;"></iframe>`,
+      buttons: {},
+      close: () => {
+        window.removeEventListener("message", listener);
+        if (!done) resolve(false);
+      }
+    });
+    dialog.render(true);
+  });
+}
+
 function registerSettings() {
   game.settings.register(MODULE_ID, "enabledPackages", {
     name: "Enabled Puzzle Packages",
@@ -35,7 +74,7 @@ function registerSettings() {
     scope: "world",
     config: true,
     type: Array,
-    default: [],
+    default: ["fellout", "wire"],
   });
   game.settings.register(MODULE_ID, "defaultDoorPuzzle", {
     name: "Default Door Puzzle",
@@ -110,24 +149,12 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   applyEnabledFromSettings();
-  // Try to auto-register default packages located under Minigames/<id>/index.js
-  const defaults = ["fellout"]; // extend as you add more
-  for (const id of defaults) {
-    const path = `./modules/${MODULE_ID}/Minigames/${id}/index.js`;
-    import(path).then(mod => {
-      if (mod?.default && typeof mod.default === "function") {
-        // allow default export to call registerPuzzle internally
-        mod.default({ MODULE_ID, registerPuzzle });
-      }
-      if (mod?.register && typeof mod.register === "function") {
-        mod.register({ MODULE_ID, registerPuzzle });
-      }
-      // Some packages may export a metadata object
-      if (mod?.pkg) registerPuzzle(mod.pkg);
-      // Refresh settings choices after registration
-      // Note: Foundry builds choices at open time; users may need to reopen settings UI.
-    }).catch(err => {
-      console.debug(`${MODULE_ID}: Package ${id} not found at`, path, err?.message);
+  // Register bundled puzzles
+  for (const pkg of BUILT_IN_PUZZLES) {
+    registerPuzzle({
+      id: pkg.id,
+      title: pkg.title,
+      open: (context) => openIframePuzzle({ ...pkg, context })
     });
   }
 

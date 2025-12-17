@@ -357,6 +357,9 @@
             if (w === state.secret) {
               state.log.push('>Entry granted.');
               state.over = true;
+              try {
+                window.parent?.postMessage({ module: "The-Horses-Puzzles", puzzle: "fellout", action: "solved" }, "*");
+              } catch (e) { console.warn("Puzzle postMessage failed", e); }
               const terminal = document.getElementById('terminal');
               terminal.classList.add('animate-success');
               setTimeout(() => terminal.classList.remove('animate-success'), 2000);
