@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fellout Terminal (Local Demo)</title>
+  <style>
+    body {
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      background: radial-gradient(circle at 20% 20%, #1c2430, #0f141c 50%);
+      color: #cfe8ff;
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+    .terminal {
+      background: #0b0f13;
+      border: 2px solid #2b7cff;
+      box-shadow: 0 0 25px rgba(43, 124, 255, 0.25);
+      width: min(680px, 90vw);
+      padding: 24px;
+      border-radius: 10px;
+    }
+    .terminal h1 {
+      margin: 0 0 12px;
+      font-size: 1.4rem;
+      letter-spacing: 0.05em;
+    }
+    .terminal pre {
+      background: #0d1724;
+      border: 1px solid #14365d;
+      padding: 16px;
+      border-radius: 8px;
+      color: #9fd3ff;
+      min-height: 120px;
+      white-space: pre-wrap;
+    }
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid #2b7cff;
+      background: linear-gradient(135deg, #1d3557, #0f2843);
+      color: #cfe8ff;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+    .status.ok { color: #7ee39f; }
+  </style>
+</head>
+<body>
+  <div class="terminal">
+    <h1 id="title">Fellout Terminal</h1>
+    <pre id="message">Loading terminal data...</pre>
+    <div class="actions">
+      <button id="unlockBtn" data-action="unlock">Unlock</button>
+      <button id="resetBtn">Reload Data</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+  <script>
+    const defaultData = {
+      title: "Fellout Terminal",
+      message: "Prototype terminal interface. Use the Unlock control to signal completion and close the puzzle.",
+      unlockLabel: "Unlock"
+    };
+
+    async function loadData() {
+      try {
+        const res = await fetch("./terminal.json");
+        if (!res.ok) throw new Error("Missing terminal.json, using defaults");
+        const data = await res.json();
+        return { ...defaultData, ...data };
+      } catch (err) {
+        console.warn("Fellout terminal falling back to defaults:", err.message);
+        return defaultData;
+      }
+    }
+
+    function render(data) {
+      document.getElementById("title").textContent = data.title;
+      document.getElementById("message").textContent = data.message;
+      const unlockBtn = document.getElementById("unlockBtn");
+      unlockBtn.textContent = data.unlockLabel || "Unlock";
+      document.getElementById("status").textContent = "";
+      unlockBtn.disabled = false;
+    }
+
+    async function init() {
+      const data = await loadData();
+      render(data);
+
+      document.getElementById("unlockBtn").addEventListener("click", () => {
+        const status = document.getElementById("status");
+        status.textContent = "Puzzle solved. You may close the demo window.";
+        status.classList.add("ok");
+        document.getElementById("unlockBtn").disabled = true;
+        try {
+          window.parent?.postMessage({ module: "The-Horses-Puzzles", action: "solved" }, "*");
+        } catch (e) {
+          // ignore postMessage errors in local file context
+        }
+      });
+
+      document.getElementById("resetBtn").addEventListener("click", async () => {
+        render(await loadData());
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

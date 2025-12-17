@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Map Puzzle (Local Demo)</title>
+  <style>
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0c1016;
+      color: #e7f1ff;
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .panel {
+      width: min(900px, 95vw);
+      background: #0f1622;
+      border: 1px solid #1f2f46;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      padding: 22px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.4rem; }
+    p { margin: 0 0 16px; color: #c2d7f5; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    button {
+      background: #15335a;
+      color: #e7f1ff;
+      border: 1px solid #2f5b9c;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .route { margin-top: 12px; padding: 10px; border: 1px dashed #2f5b9c; border-radius: 8px; min-height: 46px; }
+    .ok { color: #7be0a0; }
+    .warn { color: #ffaf4f; }
+    .error { color: #ff6b7a; }
+    .map {
+      margin: 14px 0;
+      padding: 12px;
+      background: #0b111b;
+      border-radius: 8px;
+      border: 1px solid #1b2534;
+    }
+    .edge { color: #8fb7ff; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1 id="title">System Map Puzzle</h1>
+    <p id="desc">Loading route data…</p>
+    <div class="map" id="map"></div>
+    <div class="grid" id="nodes"></div>
+    <div class="route" id="route"></div>
+    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <button id="undoBtn" disabled>Undo Step</button>
+      <button id="checkBtn" disabled>Check Route</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+    <p id="status" class="warn"></p>
+  </div>
+  <script>
+    const fallback = {
+      title: "System Map Puzzle",
+      description: "Tap through the nodes to build a safe route to the dockyard.",
+      nodes: ["Bridge", "Nav Bay", "Dockyard"],
+      edges: [["Bridge", "Nav Bay"], ["Nav Bay", "Dockyard"]],
+      solution: ["Bridge", "Nav Bay", "Dockyard"]
+    };
+    let data = fallback;
+    let route = [];
+
+    async function loadData() {
+      try {
+        const res = await fetch("./map.json");
+        if (!res.ok) throw new Error("No map.json found");
+        return await res.json();
+      } catch (e) {
+        console.warn("Using fallback map data", e.message);
+        return fallback;
+      }
+    }
+
+    function edgeExists(a, b) {
+      return data.edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+    }
+
+    function renderMap() {
+      document.getElementById("title").textContent = data.title;
+      document.getElementById("desc").textContent = data.description;
+      document.getElementById("map").innerHTML = data.edges.map(e => `<span class="edge">${e[0]} ↔ ${e[1]}</span>`).join(" · ");
+
+      const nodes = document.getElementById("nodes");
+      nodes.innerHTML = "";
+      data.nodes.forEach(n => {
+        const btn = document.createElement("button");
+        btn.textContent = n;
+        btn.addEventListener("click", () => addStep(n));
+        nodes.appendChild(btn);
+      });
+      route = [];
+      updateRoute();
+    }
+
+    function addStep(node) {
+      const status = document.getElementById("status");
+      if (route.length > 0 && !edgeExists(route[route.length - 1], node)) {
+        status.textContent = `No corridor from ${route[route.length - 1]} to ${node}.`;
+        status.className = "error";
+        return;
+      }
+      route.push(node);
+      status.textContent = "";
+      updateRoute();
+    }
+
+    function updateRoute() {
+      document.getElementById("route").textContent = route.length ? route.join(" → ") : "Tap nodes to build your route.";
+      document.getElementById("undoBtn").disabled = route.length === 0;
+      document.getElementById("checkBtn").disabled = route.length === 0;
+    }
+
+    function undo() {
+      route.pop();
+      updateRoute();
+      document.getElementById("status").textContent = "";
+    }
+
+    function check() {
+      const status = document.getElementById("status");
+      if (route.length !== data.solution.length) {
+        status.textContent = "Route length does not match the required path.";
+        status.className = "warn";
+        return;
+      }
+      const correct = route.every((n, i) => n === data.solution[i]);
+      if (correct) {
+        status.textContent = "Route confirmed. Systems aligned. Puzzle solved.";
+        status.className = "ok";
+        try {
+          window.parent?.postMessage({ module: "The-Horses-Puzzles", action: "solved" }, "*");
+        } catch (e) {}
+      } else {
+        status.textContent = "That path triggers security locks. Try again.";
+        status.className = "error";
+      }
+    }
+
+    async function init() {
+      data = await loadData();
+      renderMap();
+      document.getElementById("undoBtn").addEventListener("click", undo);
+      document.getElementById("checkBtn").addEventListener("click", check);
+      document.getElementById("resetBtn").addEventListener("click", async () => {
+        data = await loadData();
+        renderMap();
+        document.getElementById("status").textContent = "Route cleared.";
+        document.getElementById("status").className = "warn";
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

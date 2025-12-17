@@ -1,0 +1,25 @@
+{
+  "puzzles": [
+    {
+      "id": "wire",
+      "title": "Wire Control Panel",
+      "description": "Drag-and-drop wiring puzzle inspired by 40k control panels.",
+      "path": "puzzles/wire/index.html",
+      "enabled": true
+    },
+    {
+      "id": "fellout",
+      "title": "Fellout Terminal",
+      "description": "Lightweight terminal interface used for unlock checks.",
+      "path": "puzzles/fellout/index.html",
+      "enabled": true
+    },
+    {
+      "id": "system-map",
+      "title": "System Map Route",
+      "description": "Plot a safe route through the ship to reach the dockyard.",
+      "path": "puzzles/system-map/index.html",
+      "enabled": false
+    }
+  ]
+}

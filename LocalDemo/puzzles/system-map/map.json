@@ -1,0 +1,14 @@
+{
+  "title": "System Map Routing Demo",
+  "description": "Plot a safe route from Bridge to Dockyard while avoiding sealed corridors.",
+  "nodes": ["Bridge", "Nav Bay", "Armory", "Engineering", "Hab Deck", "Dockyard"],
+  "edges": [
+    ["Bridge", "Nav Bay"],
+    ["Nav Bay", "Armory"],
+    ["Nav Bay", "Engineering"],
+    ["Engineering", "Hab Deck"],
+    ["Hab Deck", "Dockyard"],
+    ["Armory", "Dockyard"]
+  ],
+  "solution": ["Bridge", "Nav Bay", "Engineering", "Hab Deck", "Dockyard"]
+}
