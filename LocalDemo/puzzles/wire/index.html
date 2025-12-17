@@ -308,12 +308,18 @@
     <script>
         // Constants
         const CABLE_COLOURS = ["Black", "Blue", "White", "Red", "Orange", "Green"];
+        // Board metadata; `diametric` marks the opposite position used by some puzzles.
         const BOARD = {
             symbols: ["Δ", "Ω", "Σ", "Φ", "Ψ", "Θ"],
             systems: ["Shield", "Cog", "Gravitas", "Open", "Cog", "Gravitas"],
             edges: [0, 5],
             diametric: 3
         };
+
+        const RNG_MULTIPLIER = 9301;
+        const RNG_INCREMENT = 49297;
+        const RNG_MODULUS = 233280;
+        const MAX_PUZZLE_ATTEMPTS = 200;
 
         // Global state
         let currentPuzzle = null;
@@ -447,8 +453,8 @@
             }
 
             next() {
-                this.seed = (this.seed * 9301 + 49297) % 233280;
-                return this.seed / 233280;
+                this.seed = (this.seed * RNG_MULTIPLIER + RNG_INCREMENT) % RNG_MODULUS;
+                return this.seed / RNG_MODULUS;
             }
 
             choice(arr) {
@@ -498,7 +504,7 @@
             // Try to find a valid puzzle
             const indices = rng.shuffle([...Array(perms.length).keys()]);
             const totalPerms = perms.length;
-            const maxAttempts = Math.min(200, perms.length);
+            const maxAttempts = Math.min(MAX_PUZZLE_ATTEMPTS, perms.length);
 
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 const solIdx = indices[attempt];
