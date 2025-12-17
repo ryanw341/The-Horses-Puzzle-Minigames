@@ -376,12 +376,13 @@
             // Rule 4: Blue left of Gravitas
             const gravPair = rng.sample(CABLE_COLOURS.filter(c => c !== "Blue"), 2);
             rules.push({
-                text: `Blue sits immediately left of the Gravitas cable (${gravPair[0]} or ${gravPair[1]}) and is not on a Gravitas socket.`,
+                text: `Blue sits immediately before the Gravitas cable (${gravPair[0]} or ${gravPair[1]}) in socket order (wraps around) and is not on a Gravitas socket.`,
                 func: (w) => {
                     const bluePos = w[ci["Blue"]];
+                    const nextBlue = (bluePos + 1) % n;
                     const pos0 = w[ci[gravPair[0]]];
                     const pos1 = w[ci[gravPair[1]]];
-                    return ((bluePos + 1 === pos0) || (bluePos + 1 === pos1)) && BOARD.systems[bluePos] !== "Gravitas";
+                    return ((nextBlue === pos0) || (nextBlue === pos1)) && BOARD.systems[bluePos] !== "Gravitas";
                 }
             });
 
@@ -429,17 +430,12 @@
             const last = CABLE_COLOURS.reduce((a, b) => a > b ? a : b);
             const leftOfLast = rng.choice([true, false]);
             
-            if (leftOfLast) {
-                rules.push({
-                    text: "The alphabetically first colour sits left of the alphabetically last.",
-                    func: (w) => w[ci[first]] < w[ci[last]]
-                });
-            } else {
-                rules.push({
-                    text: "The alphabetically first colour sits right of the alphabetically last.",
-                    func: (w) => w[ci[first]] > w[ci[last]]
-                });
-            }
+            rules.push({
+                text: leftOfLast
+                  ? "Alphabet rule: first colour appears earlier in socket order than the last (linear index)."
+                  : "Alphabet rule: first colour appears later in socket order than the last (linear index).",
+                func: (w) => leftOfLast ? w[ci[first]] < w[ci[last]] : w[ci[first]] > w[ci[last]]
+            });
 
             return rules;
         }
@@ -487,13 +483,13 @@
             const perms = permutations([...Array(n).keys()]);
 
             // Precompute rule sets
-            const ruleSets = pool.map(rule => {
+            const ruleSets = pool.map((rule, ruleIdx) => {
                 const matching = new Set();
                 perms.forEach((perm, idx) => {
                     try {
                         if (rule.func(perm)) matching.add(idx);
                     } catch (e) {
-                        // Skip if rule throws error
+                        console.warn("Rule evaluation error", ruleIdx, e);
                     }
                 });
                 return matching;
