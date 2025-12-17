@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Puzzles Demo</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(circle at 25% 25%, #111827, #0b1020 55%);
+      color: #e5e7eb;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 18px;
+    }
+    header h1 { margin: 0 0 6px; font-size: 1.6rem; }
+    header p { margin: 0; color: #9ca3af; }
+    .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .card h2 { margin: 0 0 6px; font-size: 1.1rem; }
+    .puzzle-list { display: flex; flex-direction: column; gap: 10px; }
+    .puzzle {
+      border: 1px solid #1f2f46;
+      padding: 10px;
+      border-radius: 8px;
+      background: #0e1625;
+      display: grid;
+      gap: 6px;
+    }
+    .puzzle small { color: #9ca3af; }
+    button, label input[type="checkbox"] {
+      cursor: pointer;
+    }
+    button {
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    iframe {
+      width: 100%;
+      min-height: 70vh;
+      background: #0b1020;
+      border: 1px solid #1f2937;
+      border-radius: 10px;
+    }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .tag { display: inline-block; padding: 3px 8px; background: #1f2937; border-radius: 999px; color: #9ca3af; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Local Puzzles Demo</h1>
+    <p>Toggle which minigames are visible, then run them inside the embedded frame for quick local testing.</p>
+  </header>
+  <div class="layout">
+    <section class="card">
+      <h2>Available Puzzles</h2>
+      <div class="controls" style="margin: 8px 0 12px;">
+        <label><input type="checkbox" id="hideDisabled" checked> Hide disabled puzzles</label>
+        <button id="resetBtn" type="button">Reset selection</button>
+      </div>
+      <div class="puzzle-list" id="puzzleList"></div>
+    </section>
+    <section class="card" style="min-height: 75vh;">
+      <h2 id="runnerTitle">Runner</h2>
+      <p id="runnerStatus" style="color:#9ca3af; margin-top:0;">Select a puzzle to load it in the frame below.</p>
+      <iframe id="runner" title="Puzzle Runner" sandbox="allow-scripts allow-same-origin"></iframe>
+    </section>
+  </div>
+  <script>
+    const defaultConfig = {
+      puzzles: [
+        { id: "wire", title: "Wire Control Panel", description: "Drag wires to satisfy the Magos edicts.", path: "puzzles/wire/index.html", enabled: true },
+        { id: "fellout", title: "Fellout Terminal", description: "Minimal terminal unlock screen.", path: "puzzles/fellout/index.html", enabled: true },
+        { id: "system-map", title: "System Map Route", description: "Plan a safe navigation route through the ship.", path: "puzzles/system-map/index.html", enabled: false }
+      ]
+    };
+
+    let config = defaultConfig;
+    let enabled = new Set();
+
+    const listEl = document.getElementById("puzzleList");
+    const runner = document.getElementById("runner");
+    const runnerTitle = document.getElementById("runnerTitle");
+    const runnerStatus = document.getElementById("runnerStatus");
+    const hideDisabledInput = document.getElementById("hideDisabled");
+
+    async function loadConfig() {
+      try {
+        const res = await fetch("./puzzles.json");
+        if (!res.ok) throw new Error("puzzles.json missing");
+        return await res.json();
+      } catch (e) {
+        console.warn("Using inline puzzle config:", e.message);
+        return defaultConfig;
+      }
+    }
+
+    function loadPreferences() {
+      const stored = JSON.parse(localStorage.getItem("local-demo-enabled") || "{}");
+      enabled = new Set(stored.enabled || config.puzzles.filter(p => p.enabled !== false).map(p => p.id));
+      hideDisabledInput.checked = stored.hideDisabled ?? true;
+    }
+
+    function persist() {
+      localStorage.setItem("local-demo-enabled", JSON.stringify({
+        enabled: Array.from(enabled),
+        hideDisabled: hideDisabledInput.checked
+      }));
+    }
+
+    function renderList() {
+      listEl.innerHTML = "";
+      config.puzzles.forEach(p => {
+        const isEnabled = enabled.has(p.id);
+        if (hideDisabledInput.checked && !isEnabled) return;
+        const el = document.createElement("div");
+        el.className = "puzzle";
+        el.innerHTML = `
+          <div style="display:flex; justify-content:space-between; gap:6px; align-items:center;">
+            <div>
+              <strong>${p.title}</strong>
+              <div class="tag">${p.id}</div>
+            </div>
+            <label><input type="checkbox" ${isEnabled ? "checked" : ""}> Enabled</label>
+          </div>
+          <small>${p.description || ""}</small>
+        `;
+        const checkbox = el.querySelector("input[type='checkbox']");
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) enabled.add(p.id); else enabled.delete(p.id);
+          persist();
+          renderList();
+        });
+        const runBtn = document.createElement("button");
+        runBtn.textContent = "Run puzzle";
+        runBtn.disabled = !isEnabled;
+        runBtn.addEventListener("click", () => loadPuzzle(p));
+        el.appendChild(runBtn);
+        listEl.appendChild(el);
+      });
+      if (!listEl.children.length) {
+        const empty = document.createElement("div");
+        empty.textContent = "No puzzles visible. Enable one to begin.";
+        empty.style.color = "#9ca3af";
+        listEl.appendChild(empty);
+      }
+    }
+
+    function loadPuzzle(puzzle) {
+      runnerTitle.textContent = `Runner: ${puzzle.title}`;
+      runnerStatus.textContent = `Loaded ${puzzle.id} from ${puzzle.path}`;
+      runner.src = puzzle.path;
+    }
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      enabled = new Set(config.puzzles.filter(p => p.enabled !== false).map(p => p.id));
+      hideDisabledInput.checked = true;
+      persist();
+      renderList();
+      runner.src = "";
+      runnerTitle.textContent = "Runner";
+      runnerStatus.textContent = "Select a puzzle to load it in the frame below.";
+    });
+
+    hideDisabledInput.addEventListener("change", () => {
+      persist();
+      renderList();
+    });
+
+    (async () => {
+      config = await loadConfig();
+      loadPreferences();
+      renderList();
+    })();
+  </script>
+</body>
+</html>

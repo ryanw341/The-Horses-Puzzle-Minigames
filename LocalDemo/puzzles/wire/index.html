@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>40k Control Panel Wiring Puzzle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(30, 30, 50, 0.9);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffa500;
+            margin-bottom: 30px;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .panel-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .rules-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .sockets-grid {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .socket-cell {
+            width: 70px;
+            height: 110px;
+            background: #d9d9d9;
+            border-radius: 5px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .socket-symbol {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .socket-slot {
+            width: 55px;
+            height: 40px;
+            background: #bbb;
+            border: 2px dashed #888;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .socket-slot:hover {
+            background: #ccc;
+            border-color: #666;
+        }
+
+        .socket-slot.filled {
+            border: 2px solid #333;
+            cursor: pointer;
+        }
+
+        .socket-system {
+            font-size: 9px;
+            color: #555;
+        }
+
+        .palette {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 15px;
+            background: rgba(50, 50, 70, 0.5);
+            border-radius: 5px;
+        }
+
+        .cable {
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: grab;
+            font-weight: bold;
+            text-align: center;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .cable:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+
+        .cable.hidden {
+            display: none;
+        }
+
+        .cable-black { background: #000; color: #fff; }
+        .cable-blue { background: #0066ff; color: #fff; }
+        .cable-white { background: #fff; color: #000; }
+        .cable-red { background: #ff0000; color: #fff; }
+        .cable-orange { background: #ff8800; color: #000; }
+        .cable-green { background: #00aa00; color: #fff; }
+
+        .rules-section h2 {
+            color: #ffa500;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .rules-list {
+            background: rgba(50, 50, 70, 0.5);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .rule-item {
+            margin-bottom: 10px;
+            line-height: 1.5;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+
+        .rule-item:before {
+            content: "• ";
+            color: #ffa500;
+            font-weight: bold;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: all 0.3s;
+            font-family: 'Consolas', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.hint-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        button.new-puzzle-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .ghost-cable {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1000;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: 'Consolas', monospace;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #2a2a3e;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content h3 {
+            color: #ffa500;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .modal-content p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .modal-content button {
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .sockets-grid {
+                flex-wrap: wrap;
+            }
+            
+            .socket-cell {
+                width: 60px;
+                height: 100px;
+            }
+            
+            .socket-slot {
+                width: 50px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙ 40k Control Panel Wiring Puzzle ⚙</h1>
+        
+        <div class="main-content">
+            <div class="panel-section">
+                <div class="sockets-grid" id="sockets"></div>
+                <div class="palette" id="palette"></div>
+            </div>
+            
+            <div class="rules-section">
+                <h2>Magos Edicts</h2>
+                <div class="rules-list" id="rules"></div>
+                <div class="buttons">
+                    <button class="hint-btn" id="hintBtn" style="display: none;">Show Hint</button>
+                    <button id="checkBtn">Check Solution</button>
+                    <button class="new-puzzle-btn" id="newPuzzleBtn">New Puzzle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Message</h3>
+            <p id="modalText"></p>
+            <button id="modalCloseBtn">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const CABLE_COLOURS = ["Black", "Blue", "White", "Red", "Orange", "Green"];
+        const BOARD = {
+            symbols: ["Δ", "Ω", "Σ", "Φ", "Ψ", "Θ"],
+            systems: ["Shield", "Cog", "Gravitas", "Open", "Cog", "Gravitas"],
+            edges: [0, 5],
+            diametric: 3
+        };
+
+        // Global state
+        let currentPuzzle = null;
+        let draggedCable = null;
+        let ghostElement = null;
+        let placement = {}; // {colour: socketIndex}
+
+        // Utility functions
+        function ringDist(a, b, n) {
+            const d = Math.abs(a - b);
+            return Math.min(d, n - d);
+        }
+
+        function wrapAdjacent(a, b, n) {
+            const d = Math.abs(a - b);
+            return d === 1 || d === n - 1;
+        }
+
+        function permutations(arr) {
+            if (arr.length <= 1) return [arr];
+            const result = [];
+            for (let i = 0; i < arr.length; i++) {
+                const current = arr[i];
+                const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
+                const remainingPerms = permutations(remaining);
+                for (const perm of remainingPerms) {
+                    result.push([current, ...perm]);
+                }
+            }
+            return result;
+        }
+
+        // Rule building
+        function buildRulePool(rng) {
+            const ci = {};
+            CABLE_COLOURS.forEach((c, i) => ci[c] = i);
+            const n = BOARD.symbols.length;
+            const rules = [];
+
+            // Rule 1: Black on edge
+            rules.push({
+                text: `Black occupies an edge socket (${BOARD.symbols[BOARD.edges[0]]} or ${BOARD.symbols[BOARD.edges[1]]}).`,
+                func: (w) => BOARD.edges.includes(w[ci["Black"]])
+            });
+
+            // Rule 2 & 3: Shield vs Gravitas
+            const nonBlack = CABLE_COLOURS.filter(c => c !== "Black");
+            const [shieldCol, gravCol] = rng.sample(nonBlack, 2);
+            
+            rules.push({
+                text: `${shieldCol} connects to Shield and never neighbours ${gravCol}.`,
+                func: (w) => BOARD.systems[w[ci[shieldCol]]] === "Shield" && !wrapAdjacent(w[ci[shieldCol]], w[ci[gravCol]], n)
+            });
+            
+            rules.push({
+                text: `${gravCol} connects to Gravitas and never neighbours ${shieldCol}.`,
+                func: (w) => BOARD.systems[w[ci[gravCol]]] === "Gravitas" && !wrapAdjacent(w[ci[gravCol]], w[ci[shieldCol]], n)
+            });
+
+            // Rule 4: Blue left of Gravitas
+            const gravPair = rng.sample(CABLE_COLOURS.filter(c => c !== "Blue"), 2);
+            rules.push({
+                text: `Blue sits immediately left of the Gravitas cable (${gravPair[0]} or ${gravPair[1]}) and is not on a Gravitas socket.`,
+                func: (w) => {
+                    const bluePos = w[ci["Blue"]];
+                    const pos0 = w[ci[gravPair[0]]];
+                    const pos1 = w[ci[gravPair[1]]];
+                    return ((bluePos + 1 === pos0) || (bluePos + 1 === pos1)) && BOARD.systems[bluePos] !== "Gravitas";
+                }
+            });
+
+            // Rule 5: Green farthest Cog from Black
+            const cogPositions = BOARD.systems.map((s, i) => s === "Cog" ? i : -1).filter(i => i >= 0);
+            rules.push({
+                text: "Green occupies the Cog socket farthest from Black.",
+                func: (w) => {
+                    const blackPos = w[ci["Black"]];
+                    const greenPos = w[ci["Green"]];
+                    const dist0 = ringDist(cogPositions[0], blackPos, n);
+                    const dist1 = ringDist(cogPositions[1], blackPos, n);
+                    const farthest = dist0 > dist1 ? cogPositions[0] : cogPositions[1];
+                    return greenPos === farthest;
+                }
+            });
+
+            // Rule 6: Two colours share Gravitas
+            const gPair = rng.sample(CABLE_COLOURS.filter(c => c !== "Black"), 2);
+            const extraAvoid = rng.choice(CABLE_COLOURS.filter(c => !gPair.includes(c)));
+            const [A, B] = gPair;
+            rules.push({
+                text: `${A} uses the Gravitas socket not taken by ${B} and neighbours neither ${B} nor ${extraAvoid}.`,
+                func: (w) => {
+                    const posA = w[ci[A]];
+                    const posB = w[ci[B]];
+                    const posX = w[ci[extraAvoid]];
+                    return BOARD.systems[posA] === "Gravitas" && BOARD.systems[posB] === "Gravitas" &&
+                           posA !== posB && !wrapAdjacent(posA, posB, n) && !wrapAdjacent(posA, posX, n);
+                }
+            });
+
+            // Rule 7: Exactly one on Gravitas
+            const triple = rng.sample(CABLE_COLOURS, 3);
+            rules.push({
+                text: `Among ${triple[0]}/${triple[1]}/${triple[2]}, exactly one is on a Gravitas socket.`,
+                func: (w) => {
+                    const count = triple.filter(c => BOARD.systems[w[ci[c]]] === "Gravitas").length;
+                    return count === 1;
+                }
+            });
+
+            // Rule 8: Alphabet rule
+            const first = CABLE_COLOURS.reduce((a, b) => a < b ? a : b);
+            const last = CABLE_COLOURS.reduce((a, b) => a > b ? a : b);
+            const leftOfLast = rng.choice([true, false]);
+            
+            if (leftOfLast) {
+                rules.push({
+                    text: "The alphabetically first colour sits left of the alphabetically last.",
+                    func: (w) => w[ci[first]] < w[ci[last]]
+                });
+            } else {
+                rules.push({
+                    text: "The alphabetically first colour sits right of the alphabetically last.",
+                    func: (w) => w[ci[first]] > w[ci[last]]
+                });
+            }
+
+            return rules;
+        }
+
+        // RNG class
+        class SeededRandom {
+            constructor(seed = Date.now()) {
+                this.seed = seed;
+            }
+
+            next() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+
+            choice(arr) {
+                return arr[Math.floor(this.next() * arr.length)];
+            }
+
+            sample(arr, count) {
+                const copy = [...arr];
+                const result = [];
+                for (let i = 0; i < count; i++) {
+                    const idx = Math.floor(this.next() * copy.length);
+                    result.push(copy.splice(idx, 1)[0]);
+                }
+                return result;
+            }
+
+            shuffle(arr) {
+                const copy = [...arr];
+                for (let i = copy.length - 1; i > 0; i--) {
+                    const j = Math.floor(this.next() * (i + 1));
+                    [copy[i], copy[j]] = [copy[j], copy[i]];
+                }
+                return copy;
+            }
+        }
+
+        // Puzzle generation
+        function generatePuzzle(seed = null, minRules = 4) {
+            const rng = new SeededRandom(seed || Math.floor(Math.random() * 1000000));
+            const pool = buildRulePool(rng);
+            const n = BOARD.symbols.length;
+            const perms = permutations([...Array(n).keys()]);
+
+            // Precompute rule sets
+            const ruleSets = pool.map(rule => {
+                const matching = new Set();
+                perms.forEach((perm, idx) => {
+                    try {
+                        if (rule.func(perm)) matching.add(idx);
+                    } catch (e) {
+                        // Skip if rule throws error
+                    }
+                });
+                return matching;
+            });
+
+            // Try to find a valid puzzle
+            const indices = rng.shuffle([...Array(perms.length).keys()]);
+            const totalPerms = perms.length;
+            const maxAttempts = Math.min(200, perms.length);
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const solIdx = indices[attempt];
+                const compat = ruleSets.map((s, i) => s.has(solIdx) ? i : -1).filter(i => i >= 0);
+                const useful = compat.filter(i => ruleSets[i].size > 0 && ruleSets[i].size < totalPerms);
+
+                if (useful.length < minRules) continue;
+
+                // Find minimal isolating set
+                let remaining = new Set([...Array(totalPerms).keys()]);
+                const chosen = [];
+
+                const sorted = [...useful].sort((a, b) => ruleSets[a].size - ruleSets[b].size);
+                for (const idx of sorted) {
+                    if (!ruleSets[idx].has(solIdx)) continue;
+                    const intersection = new Set([...remaining].filter(x => ruleSets[idx].has(x)));
+                    if (intersection.size < remaining.size) {
+                        remaining = intersection;
+                        chosen.push(idx);
+                        if (remaining.size === 1 && remaining.has(solIdx)) break;
+                    }
+                }
+
+                if (remaining.size === 1 && remaining.has(solIdx)) {
+                    // Try to add more rules without breaking uniqueness
+                    const visible = new Set(chosen);
+                    for (const idx of useful) {
+                        if (visible.has(idx)) continue;
+                        let inter = new Set([...Array(totalPerms).keys()]);
+                        for (const j of [...visible, idx]) {
+                            inter = new Set([...inter].filter(x => ruleSets[j].has(x)));
+                            if (inter.size === 0) break;
+                        }
+                        if (inter.size === 1 && inter.has(solIdx)) {
+                            visible.add(idx);
+                        }
+                    }
+
+                    // Ensure we have minimum rules
+                    if (visible.size >= minRules) {
+                        // Find hint
+                        const extras = useful.filter(i => !visible.has(i));
+                        const hintIdx = extras.length > 0 ? rng.choice(extras) : null;
+
+                        return {
+                            solution: perms[solIdx],
+                            rules: [...visible].sort((a, b) => a - b).map(i => pool[i]),
+                            hint: hintIdx !== null ? pool[hintIdx] : null
+                        };
+                    }
+                }
+            }
+
+            throw new Error("Could not generate valid puzzle");
+        }
+
+        // UI Functions
+        function showModal(title, text) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalText').textContent = text;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function hideModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function renderPuzzle(puzzle) {
+            currentPuzzle = puzzle;
+            placement = {};
+
+            // Render sockets
+            const socketsDiv = document.getElementById('sockets');
+            socketsDiv.innerHTML = '';
+            
+            BOARD.symbols.forEach((symbol, idx) => {
+                const cell = document.createElement('div');
+                cell.className = 'socket-cell';
+                
+                const symbolDiv = document.createElement('div');
+                symbolDiv.className = 'socket-symbol';
+                symbolDiv.textContent = symbol;
+                
+                const slot = document.createElement('div');
+                slot.className = 'socket-slot';
+                slot.dataset.socketIndex = idx;
+                slot.addEventListener('click', () => unplugSocket(idx));
+                
+                const systemDiv = document.createElement('div');
+                systemDiv.className = 'socket-system';
+                systemDiv.textContent = BOARD.systems[idx];
+                
+                cell.appendChild(symbolDiv);
+                cell.appendChild(slot);
+                cell.appendChild(systemDiv);
+                socketsDiv.appendChild(cell);
+            });
+
+            // Render palette
+            const paletteDiv = document.getElementById('palette');
+            paletteDiv.innerHTML = '';
+            
+            CABLE_COLOURS.forEach(colour => {
+                const cable = document.createElement('div');
+                cable.className = `cable cable-${colour.toLowerCase()}`;
+                cable.textContent = colour;
+                cable.dataset.colour = colour;
+                cable.draggable = true;
+                
+                cable.addEventListener('dragstart', handleDragStart);
+                cable.addEventListener('dragend', handleDragEnd);
+                
+                paletteDiv.appendChild(cable);
+            });
+
+            // Render rules
+            const rulesDiv = document.getElementById('rules');
+            rulesDiv.innerHTML = '';
+            
+            puzzle.rules.forEach(rule => {
+                const ruleDiv = document.createElement('div');
+                ruleDiv.className = 'rule-item';
+                ruleDiv.textContent = rule.text;
+                rulesDiv.appendChild(ruleDiv);
+            });
+
+            // Show/hide hint button
+            const hintBtn = document.getElementById('hintBtn');
+            if (puzzle.hint) {
+                hintBtn.style.display = 'block';
+                hintBtn.onclick = () => showModal('Hint', puzzle.hint.text);
+            } else {
+                hintBtn.style.display = 'none';
+            }
+        }
+
+        function handleDragStart(e) {
+            draggedCable = e.target;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+            
+            // Create ghost element
+            ghostElement = e.target.cloneNode(true);
+            ghostElement.classList.add('ghost-cable');
+            ghostElement.style.display = 'none';
+            document.body.appendChild(ghostElement);
+            
+            setTimeout(() => e.target.style.opacity = '0.5', 0);
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = '1';
+            if (ghostElement) {
+                ghostElement.remove();
+                ghostElement = null;
+            }
+            draggedCable = null;
+        }
+
+        // Setup drop zones
+        document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (!draggedCable) return;
+
+                const target = e.target.closest('.socket-slot');
+                if (target) {
+                    plugCable(draggedCable.dataset.colour, parseInt(target.dataset.socketIndex));
+                }
+            });
+        });
+
+        function plugCable(colour, socketIndex) {
+            // Unplug if already placed
+            if (placement[colour] !== undefined) {
+                unplugCable(colour);
+            }
+
+            // Unplug any cable in target socket
+            for (const [c, idx] of Object.entries(placement)) {
+                if (idx === socketIndex) {
+                    unplugCable(c);
+                }
+            }
+
+            placement[colour] = socketIndex;
+
+            // Update UI
+            const slot = document.querySelector(`.socket-slot[data-socket-index="${socketIndex}"]`);
+            slot.classList.add('filled');
+            slot.style.background = colour.toLowerCase();
+            slot.style.color = (colour === 'White' || colour === 'Orange') ? '#000' : '#fff';
+            slot.textContent = colour;
+
+            // Hide cable from palette
+            const cable = document.querySelector(`.cable[data-colour="${colour}"]`);
+            cable.classList.add('hidden');
+        }
+
+        function unplugCable(colour) {
+            const socketIndex = placement[colour];
+            if (socketIndex === undefined) return;
+
+            delete placement[colour];
+
+            // Update UI
+            const slot = document.querySelector(`.socket-slot[data-socket-index="${socketIndex}"]`);
+            slot.classList.remove('filled');
+            slot.style.background = '';
+            slot.style.color = '';
+            slot.textContent = '';
+
+            // Show cable in palette
+            const cable = document.querySelector(`.cable[data-colour="${colour}"]`);
+            cable.classList.remove('hidden');
+        }
+
+        function unplugSocket(socketIndex) {
+            for (const [colour, idx] of Object.entries(placement)) {
+                if (idx === socketIndex) {
+                    unplugCable(colour);
+                    return;
+                }
+            }
+        }
+
+        function checkSolution() {
+            if (Object.keys(placement).length < CABLE_COLOURS.length) {
+                showModal('Incomplete', 'Please wire all sockets before checking.');
+                return;
+            }
+
+            const wiring = CABLE_COLOURS.map(c => placement[c]);
+            const solution = currentPuzzle.solution;
+            const correct = wiring.every((pos, idx) => pos === solution[idx]);
+
+            if (correct) {
+                showModal('Success! ⚡', 'Access granted! The Machine Spirit is pleased.');
+            } else {
+                showModal('Incorrect ❌', 'The wiring is incorrect. The Machine Spirit rejects your configuration.');
+            }
+        }
+
+        function newPuzzle() {
+            try {
+                // Try up to 3 times with different seeds
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        const puzzle = generatePuzzle();
+                        renderPuzzle(puzzle);
+                        return;
+                    } catch (e) {
+                        if (i === 2) throw e; // Last attempt failed
+                    }
+                }
+            } catch (e) {
+                console.error('Puzzle generation error:', e);
+                showModal('Error', 'Could not generate puzzle. Please try again.');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('checkBtn').addEventListener('click', checkSolution);
+        document.getElementById('newPuzzleBtn').addEventListener('click', newPuzzle);
+        document.getElementById('modalCloseBtn').addEventListener('click', hideModal);
+
+        // Initialize first puzzle
+        window.addEventListener('load', () => {
+            // Try multiple times on startup
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            function tryGenerate() {
+                try {
+                    const puzzle = generatePuzzle();
+                    renderPuzzle(puzzle);
+                } catch (e) {
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        setTimeout(tryGenerate, 50);
+                    } else {
+                        showModal('Error', 'Could not generate initial puzzle. Please click "New Puzzle" to try again.');
+                    }
+                }
+            }
+            
+            tryGenerate();
+        });
+    </script>
+</body>
+</html>

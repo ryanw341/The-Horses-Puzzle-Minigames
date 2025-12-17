@@ -1,6 +1,6 @@
 # The Horse's Puzzle Minigames
 
-A core Foundry VTT module that provides a registry, settings, and HUD integrations for puzzle minigames attached to doors and actors. Individual puzzles live under their own folders and register with this core.
+A core Foundry VTT module that provides a registry, settings, and HUD integrations for puzzle minigames attached to doors and actors. Individual puzzles live under their own folders and register with this core. The module is intentionally a host architecture: each minigame can be toggled on/off in settings so an unfinished or broken puzzle never takes down the core module or any other puzzles.
 
 - Module ID: The-Horses-Puzzles
 - Foundry target: v13+
@@ -34,6 +34,9 @@ The Horse's Puzzle Minigames/
 2. In World Settings, enable the desired puzzle packages and set defaults.
 3. On a door, open WallConfig and enable puzzle + choose type.
 4. On an actor token, enable puzzle via flags; use the HUD button to launch.
+
+## Local Demo
+For a quick offline preview, download the `LocalDemo` folder and open `Puzzles Demo.html`. It lets you enable or hide individual puzzles and run them directly in the browser for smoke testing without Foundry.
 
 ## Package API
 Puzzle packages should `import { registerPuzzle } from 'modules/The-Horses-Puzzles/scripts/core.js'` and call:
