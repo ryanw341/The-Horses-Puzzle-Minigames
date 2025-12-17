@@ -1,0 +1,21 @@
+{
+  "id": "the-horses-hacking-puzzle",
+  "title": "The Horse's Fellout Hacking Puzzle",
+  "description": "A Fallout-style terminal hacking lock for Foundry VTT doors.",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13"
+  },
+  "authors": [
+    { "name": "The Horse" }
+  ],
+  "scripts": [
+    "scripts/puzzle.js"
+  ],
+  "esmodules": [],
+  "styles": [],
+  "packs": [],
+  "languages": [],
+  "url": "https://github.com/ryanw341/The-Horses-Puzzle-Minigames"
+}
