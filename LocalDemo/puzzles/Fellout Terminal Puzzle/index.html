@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fellout Terminal Puzzle</title>
+  <style>
+    :root { color-scheme: dark; --terminal-color: #ff1717; --border-color: #ff1717; --addr-color: #ff5959; }
+    body { background: #0b0d10; color: var(--terminal-color); font-family: Consolas, "Courier New", monospace; }
+    .container { max-width: 1000px; margin: 32px auto; padding: 16px; border: 1px solid var(--border-color); }
+    h1 { font-weight: 600; font-size: 18px; letter-spacing: 1px; }
+    .controls { display: flex; gap: 8px; align-items: center; }
+    button { background: #0f1a12; color: var(--terminal-color); border: 1px solid var(--border-color); padding: 6px 10px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel { border: 1px solid var(--border-color); padding: 12px; min-height: 360px; position: relative; }
+    .terminal { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .col { white-space: pre; font-size: 14px; line-height: 1.35; }
+    .addr { color: var(--addr-color); }
+    .clickable { cursor: pointer; }
+    .disabled { opacity: 0.4; cursor: default; }
+    .log { white-space: pre-wrap; font-size: 14px; }
+    @keyframes typewriter {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    @keyframes glitch {
+      0%, 100% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(2px, -2px); }
+      60% { transform: translate(-2px, -2px); }
+      80% { transform: translate(2px, 2px); }
+    }
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    @keyframes success {
+      0%, 100% { color: var(--terminal-color); }
+      50% { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+    }
+    .animate-init { animation: fadeIn 0.8s ease-out; }
+    .animate-glitch { animation: glitch 0.5s ease-in-out; }
+    .animate-flash { animation: flash 0.5s ease-in-out 3; }
+    .animate-success { animation: success 1s ease-in-out 2; }
+    .overlay-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 3px;
+      text-align: center;
+      z-index: 10;
+      text-shadow: 0 0 20px currentColor;
+      width: 100%;
+      white-space: nowrap;
+    }
+    .terminal { position: relative; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>HORSECO INDUSTRIES (TM) TERMLINK</h1>
+    <div class="controls">
+      <button id="startBtn">Start</button>
+      <button id="resetBtn">Reset Puzzle</button>
+      <button id="settingsBtn">Settings</button>
+      <span id="attempts" class="monospace"></span>
+      <span id="timer" class="monospace"></span>
+    </div>
+    <div class="grid">
+      <div class="panel" id="leftPanel">
+        <div id="terminal" class="terminal">
+          <div id="colA" class="col"></div>
+          <div id="colB" class="col"></div>
+        </div>
+      </div>
+      <div class="panel" id="rightPanel">
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    async function loadConfig() {
+      const defaults = {
+        wordLength: 5,
+        attempts: 4,
+        maxResets: null,
+        dictionary: [
+          "ASTARTES","MARINE","CHAPTER","DREADNOUGHT","EMPEROR","THRONE","TERRA","IMPERIUM","AQUILA","ARMOR",
+          "BOLTER","MELTA","PLASMA","FLAMER","LASCANNON","CHAINSWORD","POWERFIST","SERVO","SKULL","CERAMITE",
+          "APOTHECARY","CHAPLAIN","LIBRARIAN","TECHMARINE","CAPTAIN","VETERAN","SCOUT","TERMINATOR","ASSAULT",
+          "TACTICAL","DEVASTATOR","BATTLE","FORTRESS","CRUSADE","HOLY","WARP","GELLAR","FIELD","VOID","SHIP",
+          "COGITATOR","AUSPEX","VOXCASTER","RELIC","BANNER","ICON","CODEX","LITANY","PRAYER","SANCTUM",
+          "ADAMANTIUM","PROMETHIUM","SACRED","PURITY","HONOR","DUTY","COURAGE","FAITH","ZEALOT","SHRINE",
+          "VIGILANT","GUARD","SENTINEL","DEFENDER","BASTION","RAMPART","AEGIS","SHIELD","BLADE","SWORD",
+          "STRIKE","FURY","WRATH","GLORY","VICTORY","TRIUMPH","CREED","OATH","VOW","DECREE",
+          "FORGE","MARS","MECHANICUS","OMNISSIAH","MACHINE","SPIRIT","ENGINE","REACTOR","TITAN","KNIGHT",
+          "SERVO","AUGMETIC","BIONIC","IMPLANT","PISTON","GEAR","CIRCUIT","DATASLATE","HOLOLITH","SANCTIONED",
+          "ADEPT","LEXMECHANIC","SCRIBE","PARCHMENT","SCROLL","CANON","DOCTRINE","MANDATE","EDICT","ORDNANCE",
+          "ARTILLERY","MORTAR","CANNON","MISSILE","TORPEDO","MINE","BOMB","GRENADE","KRAK","FRAG",
+          "SANCTIFY","BLESS","CONSECRATE","PURGE","CLEANSE","SMITE","VANQUISH","DESTROY","ELIMINATE","ERADICATE",
+          "ANNIHILATE","OBLITERATE","RIGHTEOUS","DIVINE","BLESSED","HALLOWED","REVERED","EXALTED","GLORIFIED","MAGNIFICENT",
+          "STALWART","RESOLUTE","STEADFAST","UNWAVERING","UNYIELDING","INDOMITABLE","INVINCIBLE","IMMORTAL","ETERNAL","UNDYING",
+          "RELENTLESS","TIRELESS","ENDLESS","INFINITE","BOUNDLESS","LIMITLESS","UNBREAKABLE","IMPENETRABLE","IMPERVIOUS","INVULNERABLE",
+          "ARMAMENT","ARSENAL","MUNITION","ORDINATUS","WEAPONRY","FIREPOWER","ORDNANCE","AMMUNITION","SHELLS","ROUNDS",
+          "AUTOCANNON","HEAVY","ROTARY","GATLING","VULCAN","ASSAULT","RAPID","BURST","SALVO","BARRAGE",
+          "INCENDIARY","INFERNO","CONFLAGRATION","IMMOLATE","BURN","SCORCH","SEAR","INCINERATE","IGNITE","COMBUST",
+          "PROTOCOL","DIRECTIVE","ORDER","COMMAND","INSTRUCTION","DICTATE","IMPERATIVE","REQUISITION","SUMMONS","DISPATCH",
+          "LEGION","COHORT","COMPANY","SQUAD","PLATOON","REGIMENT","BRIGADE","BATTALION","DIVISION","CORPS",
+          "AUXILIARY","SUPPORT","RESERVE","REINFORCEMENT","BACKUP","RELIEF","GARRISON","DETACHMENT","CONTINGENT","FORCE",
+          "VANGUARD","SPEARHEAD","ADVANCE","FORWARD","FRONTLINE","POINT","RECON","RECONNAISSANCE","PATROL","PICKET",
+          "ZEALOUS","FERVENT","ARDENT","PASSIONATE","DEVOUT","PIOUS","FAITHFUL","LOYAL","DEDICATED","COMMITTED",
+          "CONSECRATED","ORDAINED","ANOINTED","APPOINTED","DESIGNATED","CHOSEN","SELECTED","ELECT","PREFERRED","FAVORED",
+          "RIGHTFUL","LAWFUL","JUST","PROPER","LEGITIMATE","AUTHORIZED","SANCTIONED","APPROVED","VALIDATED","CERTIFIED",
+          "FORTRESS","CITADEL","STRONGHOLD","BULWARK","REDOUBT","KEEP","FASTNESS","CASTLE","TOWER","SPIRE",
+          "BUNKER","PILLBOX","TRENCH","DUGOUT","FOXHOLE","EMPLACEMENT","POSITION","POST","STATION","OUTPOST",
+          "PERIMETER","BOUNDARY","BORDER","FRONTIER","EDGE","LIMIT","MARGIN","VERGE","BRINK","THRESHOLD",
+          "SANCTIFIED","VENERATED","WORSHIPPED","ADORED","REVERED","HONORED","ESTEEMED","RESPECTED","ADMIRED","PRAISED",
+          "DREADNAUGHT","PREDATOR","RHINO","RAZORBACK","VINDICATOR","WHIRLWIND","LAND","RAIDER","SPEEDER","CHIMERA",
+          "BASILISK","MANTICORE","HYDRA","LEMAN","RUSS","DEMOLISHER","BANEBLADE","SHADOWSWORD","STORMLORD","HELLHOUND",
+          "VALKYRIE","VENDETTA","THUNDERBOLT","LIGHTNING","MARAUDER","BOMBER","FIGHTER","INTERCEPTOR","GUNSHIP","DROPSHIP",
+          "CRUISER","FRIGATE","DESTROYER","BATTLESHIP","CARRIER","CORVETTE","ESCORT","FLEET","ARMADA","SQUADRON",
+          "SERVO","SKULL","PURITY","SEAL","LAUREL","WREATH","MEDAL","COMMENDATION","CITATION","DECORATION",
+          "MARKSMAN","SHARPSHOOTER","SNIPER","GUNNER","BOMBARDIER","PILOT","NAVIGATOR","OPERATOR","CREW","HANDLER",
+          "SIGIL","EMBLEM","CREST","HERALDRY","INSIGNIA","BADGE","STANDARD","ENSIGN","PENNANT","COLORS",
+          "PARCHMENT","TOME","GRIMOIRE","LEXICON","VOLUME","MANUSCRIPT","DOCUMENT","RECORD","ARCHIVE","REGISTRY",
+          "INCENSE","CANDLE","BRAZIER","ALTAR","CHAPEL","CATHEDRAL","TEMPLE","BASILICA","MONASTERY","ABBEY",
+          "CATECHISM","SERMON","HYMN","CHANT","PSALM","BENEDICTION","INVOCATION","ORATION","RECITATION","GOSPEL",
+          "PILGRIMAGE","JOURNEY","QUEST","MISSION","EXPEDITION","CAMPAIGN","OPERATION","DEPLOYMENT","ENGAGEMENT","CONFLICT",
+          "SKIRMISH","CLASH","ENCOUNTER","CONFRONTATION","SHOWDOWN","COMBAT","WARFARE","HOSTILITY","AGGRESSION","OFFENSIVE",
+          "DEFENSIVE","TACTICAL","STRATEGIC","LOGISTICAL","OPERATIONAL","CALCULATED","PLANNED","COORDINATED","ORGANIZED","STRUCTURED",
+          "DISCIPLINE","ORDER","CONTROL","REGULATION","RESTRICTION","LIMITATION","CONSTRAINT","RESTRAINT","PROHIBITION","EMBARGO",
+          "QUARANTINE","BLOCKADE","SIEGE","ENCIRCLEMENT","CORDON","BARRIER","WALL","GATE","PORTAL","ENTRANCE",
+          "SANCTUM","CHAMBER","VAULT","CRYPT","TOMB","SEPULCHER","OSSUARY","RELIQUARY","SHRINE","MEMORIAL",
+          "MONUMENT","STATUE","EDIFICE","STRUCTURE","BUILDING","FACILITY","INSTALLATION","COMPLEX","COMPOUND","SITE",
+          "ARSENAL","DEPOT","WAREHOUSE","STORAGE","STOCKPILE","RESERVE","CACHE","SUPPLY","PROVISION","RESOURCE"
+        ],
+        wordList: [
+          "ASTARTES","MARINE","CHAPTER","DREADNOUGHT","EMPEROR","THRONE","TERRA","IMPERIUM","AQUILA","ARMOR",
+          "BOLTER","MELTA","PLASMA","FLAMER","LASCANNON","CHAINSWORD","POWERFIST","SERVO","SKULL","CERAMITE",
+          "APOTHECARY","CHAPLAIN","LIBRARIAN","TECHMARINE","CAPTAIN","VETERAN","SCOUT","TERMINATOR","ASSAULT",
+          "TACTICAL","DEVASTATOR","BATTLE","FORTRESS","CRUSADE","HOLY","WARP","GELLAR","FIELD","VOID","SHIP",
+          "COGITATOR","AUSPEX","VOXCASTER","RELIC","BANNER","ICON","CODEX","LITANY","PRAYER","SANCTUM",
+          "ADAMANTIUM","PROMETHIUM","SACRED","PURITY","HONOR","DUTY","COURAGE","FAITH","ZEALOT","SHRINE",
+          "VIGILANT","GUARD","SENTINEL","DEFENDER","BASTION","RAMPART","AEGIS","SHIELD","BLADE","SWORD",
+          "STRIKE","FURY","WRATH","GLORY","VICTORY","TRIUMPH","CREED","OATH","VOW","DECREE",
+          "FORGE","MARS","MECHANICUS","OMNISSIAH","MACHINE","SPIRIT","ENGINE","REACTOR","TITAN","KNIGHT",
+          "SERVO","AUGMETIC","BIONIC","IMPLANT","PISTON","GEAR","CIRCUIT","DATASLATE","HOLOLITH","SANCTIONED",
+          "ADEPT","LEXMECHANIC","SCRIBE","PARCHMENT","SCROLL","CANON","DOCTRINE","MANDATE","EDICT","ORDNANCE",
+          "ARTILLERY","MORTAR","CANNON","MISSILE","TORPEDO","MINE","BOMB","GRENADE","KRAK","FRAG",
+          "SANCTIFY","BLESS","CONSECRATE","PURGE","CLEANSE","SMITE","VANQUISH","DESTROY","ELIMINATE","ERADICATE",
+          "ANNIHILATE","OBLITERATE","RIGHTEOUS","DIVINE","BLESSED","HALLOWED","REVERED","EXALTED","GLORIFIED","MAGNIFICENT",
+          "STALWART","RESOLUTE","STEADFAST","UNWAVERING","UNYIELDING","INDOMITABLE","INVINCIBLE","IMMORTAL","ETERNAL","UNDYING",
+          "RELENTLESS","TIRELESS","ENDLESS","INFINITE","BOUNDLESS","LIMITLESS","UNBREAKABLE","IMPENETRABLE","IMPERVIOUS","INVULNERABLE",
+          "ARMAMENT","ARSENAL","MUNITION","ORDINATUS","WEAPONRY","FIREPOWER","ORDNANCE","AMMUNITION","SHELLS","ROUNDS",
+          "AUTOCANNON","HEAVY","ROTARY","GATLING","VULCAN","ASSAULT","RAPID","BURST","SALVO","BARRAGE",
+          "INCENDIARY","INFERNO","CONFLAGRATION","IMMOLATE","BURN","SCORCH","SEAR","INCINERATE","IGNITE","COMBUST",
+          "PROTOCOL","DIRECTIVE","ORDER","COMMAND","INSTRUCTION","DICTATE","IMPERATIVE","REQUISITION","SUMMONS","DISPATCH",
+          "LEGION","COHORT","COMPANY","SQUAD","PLATOON","REGIMENT","BRIGADE","BATTALION","DIVISION","CORPS",
+          "AUXILIARY","SUPPORT","RESERVE","REINFORCEMENT","BACKUP","RELIEF","GARRISON","DETACHMENT","CONTINGENT","FORCE",
+          "VANGUARD","SPEARHEAD","ADVANCE","FORWARD","FRONTLINE","POINT","RECON","RECONNAISSANCE","PATROL","PICKET",
+          "ZEALOUS","FERVENT","ARDENT","PASSIONATE","DEVOUT","PIOUS","FAITHFUL","LOYAL","DEDICATED","COMMITTED",
+          "CONSECRATED","ORDAINED","ANOINTED","APPOINTED","DESIGNATED","CHOSEN","SELECTED","ELECT","PREFERRED","FAVORED",
+          "RIGHTFUL","LAWFUL","JUST","PROPER","LEGITIMATE","AUTHORIZED","SANCTIONED","APPROVED","VALIDATED","CERTIFIED",
+          "FORTRESS","CITADEL","STRONGHOLD","BULWARK","REDOUBT","KEEP","FASTNESS","CASTLE","TOWER","SPIRE",
+          "BUNKER","PILLBOX","TRENCH","DUGOUT","FOXHOLE","EMPLACEMENT","POSITION","POST","STATION","OUTPOST",
+          "PERIMETER","BOUNDARY","BORDER","FRONTIER","EDGE","LIMIT","MARGIN","VERGE","BRINK","THRESHOLD",
+          "SANCTIFIED","VENERATED","WORSHIPPED","ADORED","REVERED","HONORED","ESTEEMED","RESPECTED","ADMIRED","PRAISED",
+          "DREADNAUGHT","PREDATOR","RHINO","RAZORBACK","VINDICATOR","WHIRLWIND","LAND","RAIDER","SPEEDER","CHIMERA",
+          "BASILISK","MANTICORE","HYDRA","LEMAN","RUSS","DEMOLISHER","BANEBLADE","SHADOWSWORD","STORMLORD","HELLHOUND",
+          "VALKYRIE","VENDETTA","THUNDERBOLT","LIGHTNING","MARAUDER","BOMBER","FIGHTER","INTERCEPTOR","GUNSHIP","DROPSHIP",
+          "CRUISER","FRIGATE","DESTROYER","BATTLESHIP","CARRIER","CORVETTE","ESCORT","FLEET","ARMADA","SQUADRON",
+          "SERVO","SKULL","PURITY","SEAL","LAUREL","WREATH","MEDAL","COMMENDATION","CITATION","DECORATION",
+          "MARKSMAN","SHARPSHOOTER","SNIPER","GUNNER","BOMBARDIER","PILOT","NAVIGATOR","OPERATOR","CREW","HANDLER",
+          "SIGIL","EMBLEM","CREST","HERALDRY","INSIGNIA","BADGE","STANDARD","ENSIGN","PENNANT","COLORS",
+          "PARCHMENT","TOME","GRIMOIRE","LEXICON","VOLUME","MANUSCRIPT","DOCUMENT","RECORD","ARCHIVE","REGISTRY",
+          "INCENSE","CANDLE","BRAZIER","ALTAR","CHAPEL","CATHEDRAL","TEMPLE","BASILICA","MONASTERY","ABBEY",
+          "CATECHISM","SERMON","HYMN","CHANT","PSALM","BENEDICTION","INVOCATION","ORATION","RECITATION","GOSPEL",
+          "PILGRIMAGE","JOURNEY","QUEST","MISSION","EXPEDITION","CAMPAIGN","OPERATION","DEPLOYMENT","ENGAGEMENT","CONFLICT",
+          "SKIRMISH","CLASH","ENCOUNTER","CONFRONTATION","SHOWDOWN","COMBAT","WARFARE","HOSTILITY","AGGRESSION","OFFENSIVE",
+          "DEFENSIVE","TACTICAL","STRATEGIC","LOGISTICAL","OPERATIONAL","CALCULATED","PLANNED","COORDINATED","ORGANIZED","STRUCTURED",
+          "DISCIPLINE","ORDER","CONTROL","REGULATION","RESTRICTION","LIMITATION","CONSTRAINT","RESTRAINT","PROHIBITION","EMBARGO",
+          "QUARANTINE","BLOCKADE","SIEGE","ENCIRCLEMENT","CORDON","BARRIER","WALL","GATE","PORTAL","ENTRANCE",
+          "SANCTUM","CHAMBER","VAULT","CRYPT","TOMB","SEPULCHER","OSSUARY","RELIQUARY","SHRINE","MEMORIAL",
+          "MONUMENT","STATUE","EDIFICE","STRUCTURE","BUILDING","FACILITY","INSTALLATION","COMPLEX","COMPOUND","SITE",
+          "ARSENAL","DEPOT","WAREHOUSE","STORAGE","STOCKPILE","RESERVE","CACHE","SUPPLY","PROVISION","RESOURCE"
+        ],
+        secret: "GRACE",
+        allowBrackets: true,
+        bracketPairs: [
+          {open:"(",close:")"},
+          {open:"[",close:"]"},
+          {open:"{",close:"}"},
+          {open:"<",close:">"}
+        ],
+        effects: { dudRemovalChance: 0.5, resetTriesChance: 0.5 },
+        timerSeconds: 120
+      };
+      try {
+        const res = await fetch('game.json');
+        if (!res.ok) throw new Error('fetch failed');
+        const cfg = await res.json();
+        return { ...defaults, ...cfg };
+      } catch (e) {
+        console.warn('Using defaults; failed to load game.json', e);
+        return defaults;
+      }
+    }
+
+    function likeness(a, b) {
+      let count = 0;
+      for (let i = 0; i < a.length; i++) if (a[i] === b[i]) count++;
+      return count;
+    }
+
+    function pickWords(dict, count, length) {
+      const filtered = dict.filter(w => w.length === length);
+      const arr = [...filtered];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr.slice(0, Math.min(count, arr.length));
+    }
+
+    function randChar() {
+      const chars = '!@#$%^&*+-/\\|;:\'\".,?';
+      return chars[Math.floor(Math.random()*chars.length)];
+    }
+
+    function generateTerminalColumns(words, width = 12, rows = 17, wordLength = 5) {
+      // Build two columns of filler with embedded words
+      const totalLines = rows;
+      const makeColumn = () => {
+        const lines = [];
+        for (let r = 0; r < totalLines; r++) {
+          let line = '';
+          for (let c = 0; c < width; c++) line += randChar();
+          lines.push(line);
+        }
+        return lines;
+      };
+      const A = makeColumn();
+      const B = makeColumn();
+      const usedRangesA = new Map(); // lineIdx -> array of [start, end] ranges
+      const usedRangesB = new Map();
+      const embed = (columnLines, word, usedRanges) => {
+        let attempts = 0;
+        const maxAttempts = 100;
+        while (attempts < maxAttempts) {
+          attempts++;
+          const lineIdx = Math.floor(Math.random() * columnLines.length);
+          const line = columnLines[lineIdx];
+          const maxStart = Math.max(0, line.length - word.length);
+          const start = Math.floor(Math.random() * (maxStart + 1));
+          const end = start + word.length;
+          
+          // Check for overlap with existing words (including 1 char buffer)
+          const ranges = usedRanges.get(lineIdx) || [];
+          const hasOverlap = ranges.some(([s, e]) => {
+            // Require at least 1 char gap: new word cannot be within [s-1, e+1]
+            return (start >= s - 1 && start <= e) || (end >= s && end <= e + 1) || (start < s && end > e);
+          });
+          
+          if (!hasOverlap) {
+            const before = line.slice(0, start);
+            const after = line.slice(end);
+            columnLines[lineIdx] = before + word + after;
+            ranges.push([start, end]);
+            usedRanges.set(lineIdx, ranges);
+            return true;
+          }
+        }
+        // Fallback: just embed anyway if we can't find a spot
+        const lineIdx = Math.floor(Math.random() * columnLines.length);
+        const line = columnLines[lineIdx];
+        const maxStart = Math.max(0, line.length - word.length);
+        const start = Math.floor(Math.random() * (maxStart + 1));
+        const before = line.slice(0, start);
+        const after = line.slice(start + word.length);
+        columnLines[lineIdx] = before + word + after;
+        return false;
+      };
+      const half = Math.ceil(words.length/2);
+      words.slice(0, half).forEach(w => embed(A, w, usedRangesA));
+      words.slice(half).forEach(w => embed(B, w, usedRangesB));
+      return { A, B };
+    }
+
+    function generateBracketGarbage(textLength, pairs) {
+      const chars = '!@#$%^&*+-/\\|;:\'\".,?';
+      let s = '';
+      const len = Math.max(20, textLength);
+      for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random()*chars.length)];
+      // Insert a random bracket pair
+      const pair = pairs[Math.floor(Math.random()*pairs.length)];
+      const start = Math.floor(Math.random() * Math.max(1, len-3));
+      return s.slice(0,start) + pair.open + s.slice(start,start+Math.floor(Math.random()*5)+1) + pair.close + s.slice(start+Math.floor(Math.random()*5)+1);
+    }
+
+    function applyEffect(state, effect) {
+      if (effect === 'dudRemoval' && state.words.length > 1) {
+        const candidates = state.words.filter(w => w !== state.secret && !state.disabled.has(w));
+        if (candidates.length) {
+          const remove = candidates[Math.floor(Math.random()*candidates.length)];
+          state.disabled.add(remove);
+          state.log.push(`[DUD REMOVED] ${remove}`);
+        }
+      } else if (effect === 'resetTries') {
+        state.remaining = state.config.attempts;
+        state.log.push('[TRIES RESET]');
+      }
+    }
+
+    function escapeText(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function render(state) {
+      // Render terminal columns with hex addresses
+      const addrBase = 0x9A30;
+      const colA = document.getElementById('colA');
+      const colB = document.getElementById('colB');
+      colA.innerHTML = '';
+      colB.innerHTML = '';
+      const makeLineHTML = (addr, content, column) => {
+        const spanAddr = `<span class="addr">0x${addr.toString(16).toUpperCase()}</span> `;
+        // Convert content into spans; words are clickable
+        const parts = [];
+        let i = 0;
+        while (i < content.length) {
+          // try to match any word at position i
+          const match = state.words.find(w => content.slice(i, i + w.length) === w);
+          if (match) {
+            const disabled = state.disabled.has(match) ? ' disabled' : '';
+            const display = state.started ? match : '▮'.repeat(match.length);
+            parts.push(`<span class="clickable${disabled}" data-word="${match}">${display}</span>`);
+            i += match.length;
+          } else {
+            parts.push(escapeText(content[i]));
+            i++;
+          }
+        }
+        const lineHTML = spanAddr + parts.join('');
+        const div = document.createElement('div');
+        div.innerHTML = lineHTML;
+        div.querySelectorAll('.clickable').forEach(el => {
+          el.onclick = () => {
+            const w = el.getAttribute('data-word');
+            if (!state.started || state.over || state.disabled.has(w)) return;
+            state.remaining--;
+            const like = likeness(w, state.secret);
+            state.log.push(`>${w}`);
+            if (w === state.secret) {
+              state.log.push('>Entry granted.');
+              state.over = true;
+              const terminal = document.getElementById('terminal');
+              terminal.classList.add('animate-success');
+              setTimeout(() => terminal.classList.remove('animate-success'), 2000);
+            } else {
+              state.log.push('>Entry denied.');
+              state.log.push(`>Likeness=${like}`);
+              if (state.remaining <= 0) {
+                state.log.push('>LOCKOUT');
+                state.over = true;
+                state.locked = true;
+                const terminal = document.getElementById('terminal');
+                terminal.classList.add('animate-flash');
+                setTimeout(() => terminal.classList.remove('animate-flash'), 1500);
+              }
+            }
+            update();
+          };
+        });
+        return div;
+      };
+      try {
+        // Check if we should show overlay message
+        const leftPanel = document.getElementById('leftPanel');
+        const existingOverlay = leftPanel.querySelector('.overlay-message');
+        if (existingOverlay) existingOverlay.remove();
+        
+        if (state.over && state.locked) {
+          // Terminal locked - show overlay and hide content
+          const overlay = document.createElement('div');
+          overlay.className = 'overlay-message';
+          overlay.textContent = 'TERMINAL LOCKED';
+          overlay.style.color = '#ff0000';
+          leftPanel.appendChild(overlay);
+          // Don't render columns
+        } else if (state.over && !state.locked) {
+          // Access granted - show overlay and hide content
+          const overlay = document.createElement('div');
+          overlay.className = 'overlay-message';
+          overlay.textContent = 'ACCESS GRANTED';
+          overlay.style.color = '#00ff00';
+          leftPanel.appendChild(overlay);
+          // Don't render columns
+        } else {
+          // Normal state - render columns
+          const rows = Math.min(state.columns.A.length, state.columns.B.length);
+          for (let r = 0; r < rows; r++) {
+            const addrA = addrBase + r*0x20; // gap between addresses
+            const addrB = addrBase + r*0x20 + 0x10;
+            colA.appendChild(makeLineHTML(addrA, state.columns.A[r], 'A'));
+            colB.appendChild(makeLineHTML(addrB, state.columns.B[r], 'B'));
+          }
+          if (rows === 0) {
+            const msg = document.createElement('div');
+            msg.textContent = 'No data. Use Settings to configure words.';
+            colA.appendChild(msg);
+          }
+        }
+      } catch (e) {
+        console.error('Render error', e);
+        const msg = document.createElement('div');
+        msg.textContent = 'Render failed. Check console for details.';
+        colA.appendChild(msg);
+      }
+
+      const attemptsEl = document.getElementById('attempts');
+      let attemptsText = `ATTEMPTS REMAINING: ${'●'.repeat(state.remaining)}${'○'.repeat(Math.max(0, state.config.attempts - state.remaining))}`;
+      if (state.config.maxResets !== null && state.config.maxResets !== undefined) {
+        const resetsLeft = state.config.maxResets - state.resetsUsed;
+        attemptsText += `  |  RESETS: ${resetsLeft}/${state.config.maxResets}`;
+      }
+      attemptsEl.textContent = attemptsText;
+
+      const timerEl = document.getElementById('timer');
+      if (state.started && state.config.timerSeconds && state.config.timerSeconds > 0) {
+        const left = Math.max(0, Math.ceil((state.timerEnd - Date.now())/1000));
+        timerEl.textContent = ` | TIMER: ${left}s`;
+        if (!state.over && left === 0) {
+          state.log.push('>LOCKOUT (TIMEOUT)');
+          state.over = true;
+          state.locked = true;
+          const terminal = document.getElementById('terminal');
+          terminal.classList.add('animate-flash');
+          setTimeout(() => terminal.classList.remove('animate-flash'), 1500);
+        }
+      } else {
+        timerEl.textContent = '';
+      }
+
+      const logEl = document.getElementById('log');
+      logEl.textContent = ['Welcome to HORSECO Industries (TM) Termlink','Password Required',''].concat(state.log).join('\n');
+    }
+
+    function update() { render(window.__state); }
+
+    async function main() {
+      const config = await loadConfig();
+      const words = pickWords((config.wordList && config.wordList.length ? config.wordList : config.dictionary), 12, config.wordLength);
+      const state = {
+        config,
+        words,
+        secret: words[Math.floor(Math.random() * words.length)],
+        remaining: config.attempts,
+        resetsUsed: 0,
+        log: [],
+        disabled: new Set(),
+        over: false,
+        locked: false,
+        started: false,
+        timerEnd: 0,
+        columns: { A: [], B: [] }
+      };
+
+      // Build terminal columns with embedded words
+      state.columns = generateTerminalColumns(state.words, 12, 17, config.wordLength);
+
+      // Add faux garbage lines with bracket pair hints
+      if (config.allowBrackets) {
+        state.log.push('');
+        state.log.push('Garbage data detected:');
+        for (let i = 0; i < 4; i++) {
+          state.log.push(generateBracketGarbage(30, config.bracketPairs));
+        }
+        state.log.push('\nTIP: Click words to guess.');
+      }
+
+      window.__state = state;
+      render(state);
+      
+      // Typewriter effect on initialization
+      const colA = document.getElementById('colA');
+      const colB = document.getElementById('colB');
+      const allDivs = [...colA.children, ...colB.children];
+      allDivs.forEach((div, idx) => {
+        div.style.opacity = '0';
+        setTimeout(() => {
+          div.style.opacity = '1';
+        }, idx * 30);
+      });
+
+      // Timer update interval
+      setInterval(() => {
+        if (state.started && !state.over && state.config.timerSeconds > 0) {
+          update();
+        }
+      }, 1000);
+
+      document.getElementById('startBtn').onclick = () => {
+        if (!state.started) {
+          state.started = true;
+          if (config.timerSeconds) state.timerEnd = Date.now() + (config.timerSeconds*1000);
+          update();
+        }
+      };
+
+      document.getElementById('resetBtn').onclick = () => {
+        if (state.locked) {
+          state.log.push('>TERMINAL LOCKED. Refresh page to restart.');
+          update();
+          return;
+        }
+        // Check reset limit
+        if (state.config.maxResets !== null && state.config.maxResets !== undefined && state.started) {
+          if (state.resetsUsed >= state.config.maxResets) {
+            state.log.push('>NO RESETS REMAINING');
+            update();
+            return;
+          }
+          state.resetsUsed++;
+        }
+        const terminal = document.getElementById('terminal');
+        terminal.classList.add('animate-glitch');
+        setTimeout(() => terminal.classList.remove('animate-glitch'), 500);
+        if (!state.started) {
+          // Full reset only if not started yet
+          const newWords = pickWords((config.wordList && config.wordList.length ? config.wordList : config.dictionary), 12, config.wordLength);
+          state.words = newWords;
+          state.secret = newWords[Math.floor(Math.random() * newWords.length)];
+          state.remaining = config.attempts;
+          state.disabled.clear();
+          state.over = false;
+          state.log = [];
+          state.columns = generateTerminalColumns(state.words, 12, 17, config.wordLength);
+        } else {
+          // Once started, timer keeps going - only reset attempts/words/state
+          const newWords = pickWords((config.wordList && config.wordList.length ? config.wordList : config.dictionary), 12, config.wordLength);
+          state.words = newWords;
+          state.secret = newWords[Math.floor(Math.random() * newWords.length)];
+          state.remaining = config.attempts;
+          state.disabled.clear();
+          state.over = false;
+          state.log = [];
+          state.columns = generateTerminalColumns(state.words, 12, 17, config.wordLength);
+          // Don't reset started or timerEnd - timer keeps counting
+        }
+        update();
+      };
+
+      // Temporary Settings UI
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsPanel = document.createElement('div');
+      settingsPanel.style.position = 'fixed';
+      settingsPanel.style.right = '24px';
+      settingsPanel.style.top = '24px';
+      settingsPanel.style.background = '#0f1a12';
+      settingsPanel.style.border = '1px solid #2b8c4a';
+      settingsPanel.style.padding = '12px';
+      settingsPanel.style.minWidth = '260px';
+      settingsPanel.style.display = 'none';
+      settingsPanel.innerHTML = `
+        <div class="monospace" style="margin-bottom:8px;">Settings (Temp)</div>
+        <label>Word Length <input id="setWordLen" type="number" min="3" max="12" value="${config.wordLength}" /></label><br/>
+        <label>Attempts <input id="setAttempts" type="number" min="1" max="10" value="${config.attempts}" /></label><br/>
+        <label>Timer (sec) <input id="setTimer" type="number" min="0" max="600" value="${config.timerSeconds||0}" /></label><br/>
+        <label>Max Resets <input id="setMaxResets" type="number" min="0" placeholder="Unlimited" value="${config.maxResets !== null && config.maxResets !== undefined ? config.maxResets : ''}" /></label><br/>
+        <label>Terminal Color <input id="setColor" type="color" value="${getComputedStyle(document.documentElement).getPropertyValue('--terminal-color').trim() || '#9eff97'}" /></label><br/>
+        <div style="margin-top:8px;">
+          <button id="revealAnswer">Reveal Answer</button>
+          <div id="answerDisplay" class="monospace" style="margin-top:4px; color: #66ffcc;"></div>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:8px;">
+          <button id="applySettings">Apply</button>
+          <button id="closeSettings">Close</button>
+        </div>
+      `;
+      document.body.appendChild(settingsPanel);
+      settingsBtn.onclick = () => {
+        settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
+      };
+      settingsPanel.querySelector('#closeSettings').onclick = () => {
+        settingsPanel.style.display = 'none';
+      };
+      settingsPanel.querySelector('#revealAnswer').onclick = () => {
+        const answerDisplay = settingsPanel.querySelector('#answerDisplay');
+        answerDisplay.textContent = `Answer: ${state.secret}`;
+      };
+      settingsPanel.querySelector('#applySettings').onclick = () => {
+        const wl = parseInt(document.getElementById('setWordLen').value, 10);
+        const at = parseInt(document.getElementById('setAttempts').value, 10);
+        const ts = parseInt(document.getElementById('setTimer').value, 10);
+        const maxResetsValue = document.getElementById('setMaxResets').value;
+        const color = document.getElementById('setColor').value;
+        if (Number.isFinite(wl) && wl > 0) state.config.wordLength = wl;
+        if (Number.isFinite(at) && at > 0) { state.config.attempts = at; state.remaining = at; }
+        if (Number.isFinite(ts) && ts >= 0) { state.config.timerSeconds = ts; state.timerEnd = ts ? Date.now() + ts*1000 : 0; }
+        state.config.maxResets = maxResetsValue === '' ? null : parseInt(maxResetsValue, 10);
+        if (color) {
+          document.documentElement.style.setProperty('--terminal-color', color);
+          document.documentElement.style.setProperty('--border-color', color);
+          const rgb = parseInt(color.slice(1), 16);
+          const r = Math.min(255, ((rgb >> 16) & 0xff) + 102);
+          const g = Math.min(255, ((rgb >> 8) & 0xff) + 102);
+          const b = Math.min(255, (rgb & 0xff) + 102);
+          const lighter = `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+          document.documentElement.style.setProperty('--addr-color', lighter);
+        }
+        const src = (state.config.wordList && state.config.wordList.length ? state.config.wordList : state.config.dictionary);
+        state.words = pickWords(src, 12, state.config.wordLength);
+        state.columns = generateTerminalColumns(state.words, 12, 17, state.config.wordLength);
+        settingsPanel.style.display = 'none';
+        update();
+      };
+    }
+
+    main();
+  </script>
+</body>
+</html>
