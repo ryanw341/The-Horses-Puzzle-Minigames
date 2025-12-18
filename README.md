@@ -29,11 +29,27 @@ The Horse's Puzzle Minigames/
         ...
 ```
 
+## Installation
+
+### From Foundry VTT
+1. In Foundry VTT, go to the "Add-on Modules" tab
+2. Click "Install Module"
+3. Paste the manifest URL:
+   ```
+   https://raw.githubusercontent.com/ryanw341/The-Horses-Puzzle-Minigames/main/module.json
+   ```
+4. Click "Install"
+
+### Manual Installation
+1. Download the latest `module.zip` from the [Releases](https://github.com/ryanw341/The-Horses-Puzzle-Minigames/releases) page
+2. Extract it to your Foundry VTT `Data/modules/The-Horses-Puzzles` directory
+3. Restart Foundry VTT
+
 ## Getting Started
-1. Install the module in Foundry.
-2. In World Settings, enable the desired puzzle packages and set defaults.
-3. On a door, open WallConfig and enable puzzle + choose type.
-4. On an actor token, enable puzzle via flags; use the HUD button to launch.
+1. Enable the module in your world
+2. In World Settings, enable the desired puzzle packages and set defaults
+3. On a door, open WallConfig and enable puzzle + choose type
+4. On an actor token, enable puzzle via flags; use the HUD button to launch
 
 ## Local Demo
 For a quick offline preview, download the `LocalDemo` folder and open `Puzzles Demo.html`. It lets you enable or hide individual puzzles and run them directly in the browser for smoke testing without Foundry.
@@ -48,3 +64,7 @@ registerPuzzle({
   open: async (context) => { /* render UI and resolve */ }
 });
 ```
+
+## Development
+
+For information about creating releases, see [RELEASE.md](RELEASE.md).
