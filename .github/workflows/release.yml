@@ -1,0 +1,46 @@
+name: Release Module
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from module.json
+        id: get-version
+        run: |
+          VERSION=$(jq -r '.version' module.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create properly structured zip
+        run: |
+          # Create a temporary directory for the zip contents
+          mkdir -p /tmp/package
+          
+          # Copy all files except .git, .github, and other unnecessary files
+          rsync -av --exclude='.git' --exclude='.github' --exclude='*.bak' --exclude='*.bat' --exclude='*.py' --exclude='LocalDemo' ./ /tmp/package/
+          
+          # Create the zip with files at root level
+          cd /tmp/package
+          zip -r module.zip ./*
+          
+          # Move the zip back to the workspace
+          mv module.zip $GITHUB_WORKSPACE/module.zip
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./module.zip
+          asset_name: module.zip
+          asset_content_type: application/zip
